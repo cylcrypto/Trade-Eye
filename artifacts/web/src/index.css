@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Syne:wght@400..800&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+
+  --font-sans: 'Space Mono', monospace;
+  --font-mono: 'Space Mono', monospace;
+  --font-display: 'Syne', sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  /* DARK TERMINAL TRADING THEME */
+  --background: 229 58% 4%;
+  --foreground: 220 54% 86%;
+
+  --card: 223 53% 7%;
+  --card-foreground: 220 54% 86%;
+
+  --border: 222 55% 12%;
+  --card-border: 222 55% 12%;
+
+  --muted: 222 55% 12%;
+  --muted-foreground: 220 29% 32%;
+
+  --primary: 151 100% 45%;
+  --primary-foreground: 229 58% 4%;
+
+  --destructive: 348 100% 55%;
+  --destructive-foreground: 229 58% 4%;
+
+  --warning: 50 100% 50%;
+  --warning-foreground: 229 58% 4%;
+
+  --info: 199 100% 50%;
+  --info-foreground: 229 58% 4%;
+
+  --accent: 199 100% 50%;
+  --accent-foreground: 229 58% 4%;
+
+  --secondary: 220 29% 32%;
+  --secondary-foreground: 220 54% 86%;
+
+  --popover: 223 53% 7%;
+  --popover-foreground: 220 54% 86%;
+  --popover-border: 222 55% 12%;
+
+  --input: 222 55% 12%;
+  --ring: 151 100% 45%;
+
+  --radius: 0.25rem;
+
+  --primary-border: hsl(var(--primary));
+  --secondary-border: hsl(var(--secondary));
+  --muted-border: hsl(var(--muted));
+  --accent-border: hsl(var(--accent));
+  --destructive-border: hsl(var(--destructive));
+}
+
+@layer base {
+  html, body {
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+  }
+
+  body {
+    @apply font-mono antialiased bg-background text-foreground selection:bg-primary/30;
+    color-scheme: dark;
+    font-size: max(12px, 1rem);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-bold tracking-tight uppercase;
+    font-size: max(12px, 1em);
+  }
+
+  button, a, [role="button"], [role="tab"] {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-area-top { padding-top: env(safe-area-inset-top); }
+  .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+@layer utilities {
+  .glow-primary {
+    box-shadow: 0 0 15px -3px hsla(var(--primary) / 0.4);
+  }
+  .glow-destructive {
+    box-shadow: 0 0 15px -3px hsla(var(--destructive) / 0.4);
+  }
+  .glow-warning {
+    box-shadow: 0 0 15px -3px hsla(var(--warning) / 0.4);
+  }
+  .text-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+
+  .terminal-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .terminal-scrollbar::-webkit-scrollbar-track {
+    @apply bg-background border-l border-border;
+  }
+  .terminal-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 hover:bg-muted-foreground/50 transition-colors;
+  }
+}

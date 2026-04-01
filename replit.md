@@ -1,8 +1,8 @@
-# Workspace
+# TRADEYE — Crypto Trading Signals App
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+Full-stack crypto trading signals app. Express backend with a 5-minute cron that scans CoinGecko top-500 coins + Binance technical data (RSI, MACD, Bollinger Bands, OI, Funding Rate), applies a scoring engine (0-100) to generate LONG/SHORT signals, sends Telegram alerts, and auto-resolves signals at TP (+5%) or SL (-2%).
 
 ## Stack
 
@@ -15,6 +15,36 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
+- **Frontend**: React + Vite + Tailwind CSS v4 (dark terminal theme)
+
+## Frontend Pages
+
+- `/` — Signals (live pending LONG/SHORT signals)
+- `/perfo` — Performance (7-day stats, win rate, history)
+- `/top500` — CoinGecko live top 500 coins table
+- `/journal` — Telegram message logs
+
+## Backend
+
+- `artifacts/api-server/src/lib/cron.ts` — Main 5-min cron job
+- `artifacts/api-server/src/lib/scoring.ts` — scoreLong/scoreShort functions
+- `artifacts/api-server/src/lib/binance.ts` — Binance API (RSI, MACD, BB, OI, FR)
+- `artifacts/api-server/src/lib/telegram.ts` — Telegram bot integration
+- `artifacts/api-server/src/routes/signals.ts` — All signal API routes
+
+## Required Secrets
+
+- `TELEGRAM_BOT_TOKEN` — Telegram bot token for alerts
+- `TELEGRAM_CHAT_ID` — Telegram chat/channel ID for alerts
+
+## Signal Logic
+
+- Min score: 60/100 to generate a signal
+- Min volume: $3M
+- Dedup: 60min window (same coin)
+- Anti-conflict: 2h (only one active LONG, one active SHORT)
+- Resolution: 45min window; TP = +5%, SL = -2%
+- Version: v4
 
 ## Structure
 

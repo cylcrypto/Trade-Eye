@@ -1,15 +1,16 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: TRADEYE API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: signals
+    description: Trading signals operations
 paths:
   /healthz:
     get:
@@ -24,6 +25,116 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /signals/pending:
+    get:
+      operationId: getSignalsPending
+      tags: [signals]
+      summary: Get pending signals
+      parameters:
+        - name: all
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Pending signals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Signal"
+
+  /signals/history:
+    get:
+      operationId: getSignalsHistory
+      tags: [signals]
+      summary: Get signal history (last 30 days)
+      parameters:
+        - name: all
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Signal history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Signal"
+
+  /signals/perfo:
+    get:
+      operationId: getSignalsPerfo
+      tags: [signals]
+      summary: Get 7-day performance stats
+      parameters:
+        - name: all
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Performance stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PerfoStats"
+
+  /signals/export:
+    get:
+      operationId: exportSignals
+      tags: [signals]
+      summary: Export signals as TXT file
+      parameters:
+        - name: all
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: TXT file
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /signals/telegram-logs:
+    get:
+      operationId: getTelegramLogs
+      tags: [signals]
+      summary: Get telegram logs
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Telegram logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TelegramLog"
+
+  /test-telegram:
+    get:
+      operationId: testTelegram
+      tags: [signals]
+      summary: Test telegram connection
+      responses:
+        "200":
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelegramTestResult"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +142,145 @@ components:
       properties:
         status:
           type: string
+        version:
+          type: string
+        uptime:
+          type: number
       required:
         - status
 
+    Signal:
+      type: object
+      properties:
+        id:
+          type: integer
+        coin_id:
+          type: string
+        symbol:
+          type: string
+        image:
+          type: string
+        direction:
+          type: string
+        entry_price:
+          type: string
+        signal_score:
+          type: integer
+        created_at:
+          type: string
+        resolved:
+          type: boolean
+        result:
+          type: string
+          nullable: true
+        exit_price:
+          type: string
+          nullable: true
+        pct_change:
+          type: string
+          nullable: true
+        pts:
+          type: integer
+          nullable: true
+        version:
+          type: string
+          nullable: true
+        funding_rate:
+          type: string
+          nullable: true
+        rsi_15m:
+          type: string
+          nullable: true
+        oi_change:
+          type: string
+          nullable: true
+        reasons:
+          type: string
+          nullable: true
+        change_1h:
+          type: string
+          nullable: true
+        change_24h:
+          type: string
+          nullable: true
+        tp_price:
+          type: string
+          nullable: true
+        sl_price:
+          type: string
+          nullable: true
+        updated_at:
+          type: string
+          nullable: true
+      required:
+        - id
+        - coin_id
+        - symbol
+        - image
+        - direction
+        - entry_price
+        - signal_score
+        - created_at
+        - resolved
+
+    PerfoStats:
+      type: object
+      properties:
+        corrects:
+          type: integer
+        incorrects:
+          type: integer
+        neutres:
+          type: integer
+        total:
+          type: integer
+        score7d:
+          type: number
+        winRate:
+          type: number
+        longWinRate:
+          type: number
+        shortWinRate:
+          type: number
+        brackets:
+          type: object
+          additionalProperties:
+            type: integer
+      required:
+        - corrects
+        - incorrects
+        - neutres
+        - total
+        - score7d
+        - winRate
+        - longWinRate
+        - shortWinRate
+        - brackets
+
+    TelegramLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        message:
+          type: string
+        type:
+          type: string
+        created_at:
+          type: string
+      required:
+        - id
+        - message
+        - type
+        - created_at
+
+    TelegramTestResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
