@@ -423,12 +423,18 @@ export async function runCron() {
     let bestLongScore = 0;
     let bestLongSymbol = "";
 
+    const DEBUG_TOKENS = ["bitcoin", "ethereum"];
+
     for (const coin of liquid) {
       const ls = scoreLong(coin);
       const ss = scoreShort(coin);
 
       if (ls.score > bestLongScore) { bestLongScore = ls.score; bestLongSymbol = coin.symbol; }
       if (ss.score > bestShortScore) { bestShortScore = ss.score; bestShortSymbol = coin.symbol; }
+
+      if (DEBUG_TOKENS.includes(coin.id)) {
+        console.log(`[DEBUG ${coin.symbol.toUpperCase()}] Pre-score LONG=${ls.score} SHORT=${ss.score} — ${ls.score >= MIN_SCORE || ss.score >= MIN_SCORE ? "✅ dans candidates" : "❌ éliminé (< MIN_SCORE)"}`);
+      }
 
       if (ls.score >= MIN_SCORE || ss.score >= MIN_SCORE) {
         candidates.push({
@@ -448,6 +454,19 @@ export async function runCron() {
     console.log(`[V4] Pre-score top LONG: ${fmtList(top3LongPre, "longScore")}`);
     console.log(`[V4] Pre-score top SHORT: ${fmtList(top3ShortPre, "shortScore")}`);
     console.log(`[V4] ${candidates.length} candidat(s) >= ${MIN_SCORE}`);
+
+    // Trace BTC/ETH rank dans le classement
+    for (const id of DEBUG_TOKENS) {
+      const c = candidates.find(x => x.coin.id === id);
+      if (!c) continue;
+      const sym = c.coin.symbol.toUpperCase();
+      const longRank = candidates.filter(x => x.longScore >= MIN_SCORE).sort((a, b) => b.longScore - a.longScore).findIndex(x => x.coin.id === id) + 1;
+      const shortRank = candidates.filter(x => x.shortScore >= MIN_SCORE).sort((a, b) => b.shortScore - a.shortScore).findIndex(x => x.coin.id === id) + 1;
+      const inTop3Long = longRank > 0 && longRank <= 3;
+      const inTop3Short = shortRank > 0 && shortRank <= 3;
+      const binanceKey = COINGECKO_MAPPING[id];
+      console.log(`[DEBUG ${sym}] Rank LONG=#${longRank || "N/A"} SHORT=#${shortRank || "N/A"} — enrichissement: ${inTop3Long || inTop3Short ? "✅ OUI (top3)" : "❌ NON (hors top3) → [SCORING] bloqué prévu"} — Binance key: ${binanceKey || "non mappé"} — Fallback CG OHLC: ${binanceKey ? "s'activerait si top3" : "s'activerait (branche else)"}`);
+    }
 
     // 6. Enrichissement dual-source : top 3 LONG + top 3 SHORT
     const top3Long = candidates
