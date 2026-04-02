@@ -381,6 +381,9 @@ export async function runCron() {
   try {
     console.log(`[V5] Cycle @ ${new Date().toISOString()} — activité Replit simulée`);
 
+    // 0. Résolution préventive avec prix du cycle précédent (avant fetch frais)
+    await resolveSignals();
+
     // 1. Fetch des coins
     const coins = await fetchAllCoins();
 

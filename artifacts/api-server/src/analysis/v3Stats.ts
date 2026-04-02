@@ -89,7 +89,7 @@ export async function runV3Stats(): Promise<void> {
         ? (winScores / winCount - lossScores / lossCount).toFixed(2)
         : "0";
 
-    console.log("=== V4 STATS ===");
+    console.log("=== V5 STATS ===");
     console.log("Winrate par bracket:", JSON.stringify(bracketStats));
     console.log(`EV réel (moy pct/trade): ${ev} (${resolved} signaux résolus)`);
     console.log(
@@ -104,6 +104,6 @@ export async function runV3Stats(): Promise<void> {
         : "Algo stable — continuer",
     );
   } catch (err) {
-    console.warn("[V4Stats] Erreur analyse:", err instanceof Error ? err.message : err);
+    console.warn("[V5Stats] Erreur analyse:", err instanceof Error ? err.message : err);
   }
 }
