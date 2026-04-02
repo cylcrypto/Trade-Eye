@@ -81,7 +81,7 @@ export function formatSignalMessage(
   const tpLine = tpPrice ? `🎯 TP: $${fmtPrice(tpPrice)} (${tpPct})` : "";
   const slLine = slPrice ? `🛑 SL: $${fmtPrice(slPrice)} (${slPct})` : "";
 
-  return `${emoji} <b>SIGNAL ${direction} — ${symbol.toUpperCase()} [V4]</b>
+  return `${emoji} <b>SIGNAL ${direction} — ${symbol.toUpperCase()} [V5]</b>
 Score: ${score}/100
 Prix entrée: $${fmtPrice(price)}${binanceLine ? `\n${binanceLine}` : ""}${tpLine ? `\n${tpLine}` : ""}${slLine ? `\n${slLine}` : ""}
 Raisons:
@@ -111,7 +111,7 @@ export function formatResultMessage(
   const mins = totalMin % 60;
   const durationStr = hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
 
-  return `${emoji} <b>${label} — ${symbol.toUpperCase()} ${direction} [V4]</b>
+  return `${emoji} <b>${label} — ${symbol.toUpperCase()} ${direction} [V5]</b>
 Entrée: $${fmtPrice(entryPrice)} → Sortie: $${fmtPrice(exitPrice)}
 ${sign}${directedPct.toFixed(2)}% | Durée: ${durationStr}
 Score: ${pts}/10 pts`;
