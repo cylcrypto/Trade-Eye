@@ -26,7 +26,7 @@ export default function PerformancePage() {
         <div className="flex justify-between items-center border-b border-border pb-4">
           <div>
             <h2 className="text-xl font-display font-bold">PERFO 7J</h2>
-            <p className="text-xs text-muted-foreground">Signaux V4 résolus uniquement</p>
+            <p className="text-xs text-muted-foreground">Signaux V5 résolus uniquement</p>
           </div>
           <a
             href={getExportSignalsUrl()}
@@ -172,7 +172,7 @@ export default function PerformancePage() {
                   ) : !history || history.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                        Aucun historique V4.
+                        Aucun historique V5.
                       </td>
                     </tr>
                   ) : (
