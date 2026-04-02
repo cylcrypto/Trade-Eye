@@ -174,7 +174,7 @@ async function sendDailySummary() {
   setTimeout(() => { dailySummarySent = false; }, 60 * 60 * 1000);
   try {
     const data = await db.select().from(signalsTable)
-      .where(eq(signalsTable.version, "v4"));
+      .where(eq(signalsTable.version, "v5"));
 
     const resolved = data.filter(s =>
       s.result === "correct" || s.result === "incorrect");
@@ -318,7 +318,7 @@ async function handleTelegramExport() {
   if (!BOT_TOKEN || !CHAT_ID) return;
   try {
     const signals = await db.select().from(signalsTable)
-      .where(eq(signalsTable.version, "v4"))
+      .where(eq(signalsTable.version, "v5"))
       .orderBy(desc(signalsTable.created_at));
 
     const resolved = signals.filter(s => s.resolved && s.result);
@@ -375,8 +375,8 @@ async function handleTelegramExport() {
     const content = lines.join("\n");
     const form = new FormData();
     form.append("chat_id", CHAT_ID);
-    form.append("document", new Blob([content], { type: "text/plain" }), "tradeye_v4_export.txt");
-    form.append("caption", "📊 Export complet TRADEYE V4");
+    form.append("document", new Blob([content], { type: "text/plain" }), "tradeye_v5_export.txt");
+    form.append("caption", "📊 Export complet TRADEYE V5");
 
     const sendRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
       method: "POST",

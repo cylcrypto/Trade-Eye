@@ -7,10 +7,10 @@ export async function runV3Stats(): Promise<void> {
     const data = await db
       .select()
       .from(signalsTable)
-      .where(eq(signalsTable.version, "v4"));
+      .where(eq(signalsTable.version, "v5"));
 
     if (data.length === 0) {
-      console.log("=== V4 STATS === Pas encore de signaux V4 résolus");
+      console.log("=== V5 STATS === Pas encore de signaux V5 résolus");
       return;
     }
 

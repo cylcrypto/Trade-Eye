@@ -331,7 +331,7 @@ async function resolveSignals() {
       const exitPriceStr = currentPrice.toFixed(8).replace(/0+$/, "").replace(/\.$/, "");
       const label = isTP ? "TP" : "SL";
       const sign = rawPct >= 0 ? "+" : "";
-      console.log(`[V4] Resolved: ${signal.symbol.toUpperCase()} ${signal.direction} ${label} ${result} ${sign}${rawPct.toFixed(2)}%`);
+      console.log(`[V5] Resolved: ${signal.symbol.toUpperCase()} ${signal.direction} ${label} ${result} ${sign}${rawPct.toFixed(2)}%`);
 
       const msg = formatResultMessage(
         signal.symbol,
@@ -351,7 +351,7 @@ async function resolveSignals() {
 }
 
 export async function runCron() {
-  console.log(`[V4] Cycle — pool total:${pool.totalCount} idle:${pool.idleCount} waiting:${pool.waitingCount}`);
+  console.log(`[V5] Cycle — pool total:${pool.totalCount} idle:${pool.idleCount} waiting:${pool.waitingCount}`);
   if (isRunning) {
     console.log("[CronJob] Already running, skipping");
     return;
@@ -378,7 +378,7 @@ export async function runCron() {
   const cycleStart = Date.now();
   let statsEmittedThisCycle = false;
   try {
-    console.log(`[V4] Cycle @ ${new Date().toISOString()} — activité Replit simulée`);
+    console.log(`[V5] Cycle @ ${new Date().toISOString()} — activité Replit simulée`);
 
     // 1. Fetch des coins
     const coins = await fetchAllCoins();
@@ -411,7 +411,7 @@ export async function runCron() {
         c.price_change_percentage_24h_in_currency != null
     );
 
-    console.log(`[V4] ${liquid.length} coins liquides (vol > $${(MIN_VOLUME / 1e6).toFixed(0)}M)`);
+    console.log(`[V5] ${liquid.length} coins liquides (vol > $${(MIN_VOLUME / 1e6).toFixed(0)}M)`);
 
     // 5. Scoring LONG et SHORT pour tous les coins
     const candidates: Array<{
@@ -456,9 +456,9 @@ export async function runCron() {
     const top3ShortPre = candidates.filter(c => c.shortScore >= MIN_SCORE).sort((a, b) => b.shortScore - a.shortScore).slice(0, 3);
     const fmtList = (arr: typeof candidates, key: "longScore" | "shortScore") =>
       arr.map(c => `${c.coin.symbol.toUpperCase()}(${c[key]})`).join(" ") || "none";
-    console.log(`[V4] Pre-score top LONG: ${fmtList(top3LongPre, "longScore")}`);
-    console.log(`[V4] Pre-score top SHORT: ${fmtList(top3ShortPre, "shortScore")}`);
-    console.log(`[V4] ${candidates.length} candidat(s) >= ${MIN_SCORE}`);
+    console.log(`[V5] Pre-score top LONG: ${fmtList(top3LongPre, "longScore")}`);
+    console.log(`[V5] Pre-score top SHORT: ${fmtList(top3ShortPre, "shortScore")}`);
+    console.log(`[V5] ${candidates.length} candidat(s) >= ${MIN_SCORE}`);
 
     // Trace BTC/ETH rank dans le classement
     for (const id of DEBUG_TOKENS) {
@@ -571,7 +571,7 @@ export async function runCron() {
       const { coin, longScore, shortScore, longReasons, shortReasons, binanceData: bd } = c;
 
       if (BLACKLISTED_TOKENS.includes(coin.symbol.toUpperCase())) {
-        console.log(`[V4] Blacklisted token skipped: ${coin.symbol.toUpperCase()}`);
+        console.log(`[V5] Blacklisted token skipped: ${coin.symbol.toUpperCase()}`);
         continue;
       }
 
@@ -635,7 +635,7 @@ export async function runCron() {
                   entry_price: price,
                   signal_score: longScore,
                   created_at: now,
-                  version: "v4",
+                  version: "v5",
                   rsi_15m: rsi15m,
                   funding_rate: fundingRate,
                   oi_change: oiChange,
@@ -647,7 +647,7 @@ export async function runCron() {
                 }).returning({ id: signalsTable.id })
               );
               savedToDB = true;
-              console.log(`[V4] ✅ LONG ${coin.symbol.toUpperCase()} saved to DB (id=${insertedLong.id})`);
+              console.log(`[V5] ✅ LONG ${coin.symbol.toUpperCase()} saved to DB (id=${insertedLong.id})`);
               const verifyLong = await dbQuery(() =>
                 db.select().from(signalsTable).where(eq(signalsTable.id, insertedLong.id)).limit(1)
               );
@@ -665,13 +665,13 @@ export async function runCron() {
               if (attempt < 2) await sleep(2000);
             }
           }
-          console.log(`[V4] Signal LONG ${coin.symbol.toUpperCase()} score=${longScore}/100 @ $${parseFloat(price).toFixed(4)} TP=$${parseFloat(tpPrice).toFixed(4)} SL=$${parseFloat(slPrice).toFixed(4)}`);
+          console.log(`[V5] Signal LONG ${coin.symbol.toUpperCase()} score=${longScore}/100 @ $${parseFloat(price).toFixed(4)} TP=$${parseFloat(tpPrice).toFixed(4)} SL=$${parseFloat(slPrice).toFixed(4)}`);
           const msg = formatSignalMessage(coin.symbol, "LONG", longScore, price, longReasons, now, bd?.rsi, bd?.fundingRate, bd?.oiChange, tpPrice, slPrice);
           await sendTelegram(savedToDB ? msg : msg + "\n⚠️ Non enregistré en DB");
         } else if (existing.length > 0) {
-          console.log(`[V4] Dedup LONG ${coin.symbol.toUpperCase()} — signal récent ou encore ouvert (non résolu)`);
+          console.log(`[V5] Dedup LONG ${coin.symbol.toUpperCase()} — signal récent ou encore ouvert (non résolu)`);
         } else {
-          console.log(`[V4] Blocked LONG ${coin.symbol.toUpperCase()} — SHORT contradictoire récent ou encore ouvert`);
+          console.log(`[V5] Blocked LONG ${coin.symbol.toUpperCase()} — SHORT contradictoire récent ou encore ouvert`);
         }
       }
 
@@ -717,7 +717,7 @@ export async function runCron() {
                   entry_price: price,
                   signal_score: shortScore,
                   created_at: now,
-                  version: "v4",
+                  version: "v5",
                   rsi_15m: rsi15m,
                   funding_rate: fundingRate,
                   oi_change: oiChange,
@@ -729,7 +729,7 @@ export async function runCron() {
                 }).returning({ id: signalsTable.id })
               );
               savedToDB = true;
-              console.log(`[V4] ✅ SHORT ${coin.symbol.toUpperCase()} saved to DB (id=${insertedShort.id})`);
+              console.log(`[V5] ✅ SHORT ${coin.symbol.toUpperCase()} saved to DB (id=${insertedShort.id})`);
               const verifyShort = await dbQuery(() =>
                 db.select().from(signalsTable).where(eq(signalsTable.id, insertedShort.id)).limit(1)
               );
@@ -747,13 +747,13 @@ export async function runCron() {
               if (attempt < 2) await sleep(2000);
             }
           }
-          console.log(`[V4] Signal SHORT ${coin.symbol.toUpperCase()} score=${shortScore}/100 @ $${parseFloat(price).toFixed(4)} TP=$${parseFloat(tpPrice).toFixed(4)} SL=$${parseFloat(slPrice).toFixed(4)}`);
+          console.log(`[V5] Signal SHORT ${coin.symbol.toUpperCase()} score=${shortScore}/100 @ $${parseFloat(price).toFixed(4)} TP=$${parseFloat(tpPrice).toFixed(4)} SL=$${parseFloat(slPrice).toFixed(4)}`);
           const msg = formatSignalMessage(coin.symbol, "SHORT", shortScore, price, shortReasons, now, bd?.rsi, bd?.fundingRate, bd?.oiChange, tpPrice, slPrice);
           await sendTelegram(savedToDB ? msg : msg + "\n⚠️ Non enregistré en DB");
         } else if (existing.length > 0) {
-          console.log(`[V4] Dedup SHORT ${coin.symbol.toUpperCase()} — signal récent ou encore ouvert (non résolu)`);
+          console.log(`[V5] Dedup SHORT ${coin.symbol.toUpperCase()} — signal récent ou encore ouvert (non résolu)`);
         } else {
-          console.log(`[V4] Blocked SHORT ${coin.symbol.toUpperCase()} — LONG contradictoire récent ou encore ouvert`);
+          console.log(`[V5] Blocked SHORT ${coin.symbol.toUpperCase()} — LONG contradictoire récent ou encore ouvert`);
         }
       }
     }
@@ -764,7 +764,7 @@ export async function runCron() {
     }
 
     const elapsed = ((Date.now() - cycleStart) / 1000).toFixed(1);
-    console.log(`[V4] Cycle complete in ${elapsed}s — next in 5min`);
+    console.log(`[V5] Cycle complete in ${elapsed}s — next in 5min`);
   } catch (err) {
     console.error("[CronJob] Erreur inattendue:", err);
   } finally {

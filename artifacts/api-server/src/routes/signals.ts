@@ -15,7 +15,7 @@ router.get("/signals/pending", async (req, res) => {
       .where(
         showAll
           ? eq(signalsTable.resolved, false)
-          : and(eq(signalsTable.resolved, false), eq(signalsTable.version, "v4")),
+          : and(eq(signalsTable.resolved, false), eq(signalsTable.version, "v5")),
       )
       .orderBy(desc(signalsTable.signal_score));
     res.json(pending);
@@ -35,7 +35,7 @@ router.get("/signals/history", async (req, res) => {
       .where(
         showAll
           ? gte(signalsTable.created_at, since)
-          : and(eq(signalsTable.version, "v4"), gte(signalsTable.created_at, since)),
+          : and(eq(signalsTable.version, "v5"), gte(signalsTable.created_at, since)),
       )
       .orderBy(desc(signalsTable.created_at))
       .limit(100);
@@ -59,7 +59,7 @@ router.get("/signals/perfo", async (req, res) => {
           ? and(eq(signalsTable.resolved, true), gte(signalsTable.created_at, since))
           : and(
               eq(signalsTable.resolved, true),
-              eq(signalsTable.version, "v4"),
+              eq(signalsTable.version, "v5"),
               gte(signalsTable.created_at, since),
             ),
       );
@@ -137,12 +137,12 @@ router.get("/signals/export", async (req, res) => {
       .where(
         showAll
           ? gte(signalsTable.created_at, since)
-          : and(eq(signalsTable.version, "v4"), gte(signalsTable.created_at, since)),
+          : and(eq(signalsTable.version, "v5"), gte(signalsTable.created_at, since)),
       )
       .orderBy(desc(signalsTable.created_at));
 
     const lines: string[] = [];
-    lines.push("=== TRADEYE V4 SIGNAL EXPORT ===");
+    lines.push("=== TRADEYE V5 SIGNAL EXPORT ===");
     lines.push(`Generated: ${new Date().toISOString()}`);
     lines.push("");
 

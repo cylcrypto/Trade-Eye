@@ -41,11 +41,35 @@ function calculate15minMomentum(ohlc: number[][] | null | undefined, symbol: str
   return { pct, label };
 }
 
+// Momentum 4h : bougie il y a 4h (index -17 sur bougies 15min) vs bougie actuelle
+function calculate4hMomentum(ohlc: number[][] | null | undefined, symbol: string, silent = false): { pct: number; label: string } {
+  if (!ohlc || ohlc.length < 17) {
+    return { pct: 0, label: 'NO_DATA' };
+  }
+  const ref4hClose = parseFloat(String(ohlc[ohlc.length - 17][4]));
+  const currentClose = parseFloat(String(ohlc[ohlc.length - 1][4]));
+  if (!ref4hClose || !currentClose || ref4hClose === 0) return { pct: 0, label: 'NO_DATA' };
+
+  const pct = ((currentClose - ref4hClose) / ref4hClose) * 100;
+
+  let label = 'NEUTRAL';
+  if (pct > 12)       label = 'PUMP_EXCESSIVE';
+  else if (pct >= 5)  label = 'PUMP_SHORT';
+  else if (pct >= 1)  label = 'GOOD_LONG';
+  else if (pct >= -1) label = 'NEUTRAL';
+  else if (pct >= -8) label = 'GOOD_SHORT';
+  else                label = 'DUMP_EXCESSIVE';
+
+  if (!silent) console.log(`[MOMENTUM 4h] ${symbol} : ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}% → ${label}`);
+  return { pct, label };
+}
+
 export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
-  const { price_change_percentage_1h_in_currency: ch1h, price_change_percentage_24h_in_currency: ch24h, total_volume: vol } = coin;
+  const { price_change_percentage_1h_in_currency: ch1h, total_volume: vol } = coin;
   const reasons: string[] = [];
   let score = 0;
 
+  // Momentum 15min
   const mom15 = calculate15minMomentum(binance?.ohlcCandles, coin.symbol?.toUpperCase() || 'UNKNOWN');
   if (mom15.label === 'GOOD_LONG') {
     score += 40;
@@ -73,27 +97,27 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
     }
   }
 
-  if (ch24h < -2 && ch1h > 1) {
+  // Momentum 4h — tendance de fond court terme (remplace ch24h)
+  const mom4h = calculate4hMomentum(binance?.ohlcCandles, coin.symbol?.toUpperCase() || 'UNKNOWN');
+  if (mom4h.label === 'GOOD_LONG') {
     score += 15;
-    reasons.push(`Retournement haussier (24h${ch24h.toFixed(1)}% / 1h+${ch1h.toFixed(1)}%)`);
-  } else if (ch24h > 0 && ch1h > 0) {
-    const pts = clamp((ch24h / 10) * 15, 0, 15);
-    score += pts;
-    if (pts > 0) reasons.push(`Tendance 24h positive +${ch24h.toFixed(1)}%`);
+    reasons.push(`Momentum 4h +${mom4h.pct.toFixed(1)}% (tendance haussière saine)`);
+  } else if (mom4h.label === 'PUMP_SHORT' || mom4h.label === 'PUMP_EXCESSIVE') {
+    score -= 15;
+    reasons.push(`Momentum 4h +${mom4h.pct.toFixed(1)}% (trop pumped, dangereux LONG)`);
+  } else if (mom4h.label === 'DUMP_EXCESSIVE') {
+    score -= 15;
+    reasons.push(`Momentum 4h ${mom4h.pct.toFixed(1)}% (tendance baissière défavorable)`);
   }
+  // NEUTRAL, GOOD_SHORT (<-1% et >=-8%) → 0pts
 
+  // Volume
   const volRatio = vol / 5_000_000;
   const volPts = clamp((volRatio / 0.4) * 20, 0, 20);
   score += volPts;
   if (volPts > 0) reasons.push(`Volume fort ($${(vol / 1e6).toFixed(0)}M)`);
 
-  const ch6hCapped = Math.max(-15, Math.min(15, ch24h / 4));
-  const avgHourly = ch6hCapped / 6;
-  if (ch1h > avgHourly * 2) {
-    score += 10;
-    reasons.push(`Accélération haussière (1h vs moyenne horaire)`);
-  }
-
+  // RSI
   if (binance?.rsi != null) {
     if (binance.rsi < 30) {
       score += 10;
@@ -104,6 +128,7 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
     }
   }
 
+  // MACD
   if (binance?.macd != null) {
     if (binance.macd.histogram > 0.001) {
       score += 15;
@@ -114,6 +139,7 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
     }
   }
 
+  // Bollinger Bands
   if (binance?.bb != null && binance.bb.lower > 0) {
     const cp = binance.lastClose ?? coin.current_price;
     if (cp > 0 && cp <= binance.bb.lower * 1.005) {
@@ -125,6 +151,7 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
     }
   }
 
+  // Volume divergence
   if (binance?.volDivergence != null) {
     if (binance.volDivergence > 2 && ch1h > 0) {
       score += 10;
@@ -134,11 +161,13 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
     }
   }
 
+  // Open Interest
   if (binance?.oiChange != null && binance.oiChange > 0 && ch1h > 0) {
     score += 10;
     reasons.push(`Open Interest en hausse (+${binance.oiChange.toFixed(1)}%)`);
   }
 
+  // Funding Rate
   if (binance?.fundingRate != null) {
     if (binance.fundingRate < -0.001) {
       score += 10;
@@ -148,21 +177,15 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
     }
   }
 
-  if (ch24h > 20) {
-    score -= 20;
-    reasons.push(`Pénalité pump excessif (24h +${ch24h.toFixed(0)}%)`);
-  } else if (ch24h > 15 && ch1h < 0.5) {
-    score -= 10;
-  }
-
   return { score: Math.round(clamp(score, 0, 85)), direction: "LONG", reasons };
 }
 
 export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
-  const { price_change_percentage_1h_in_currency: ch1h, price_change_percentage_24h_in_currency: ch24h, total_volume: vol } = coin;
+  const { price_change_percentage_1h_in_currency: ch1h, total_volume: vol } = coin;
   const reasons: string[] = [];
   let score = 0;
 
+  // Momentum 15min
   const mom15 = calculate15minMomentum(binance?.ohlcCandles, coin.symbol?.toUpperCase() || 'UNKNOWN', true);
   if (mom15.label === 'GOOD_SHORT') {
     score += 40;
@@ -190,15 +213,22 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     }
   }
 
-  if (ch24h > 3 && ch1h < -1) {
+  // Momentum 4h — tendance de fond court terme (remplace ch24h), silent=true car déjà loggé via scoreLong
+  const mom4h = calculate4hMomentum(binance?.ohlcCandles, coin.symbol?.toUpperCase() || 'UNKNOWN', true);
+  if (mom4h.label === 'GOOD_SHORT') {
     score += 15;
-    reasons.push(`Retournement baissier (24h+${ch24h.toFixed(1)}% / 1h${ch1h.toFixed(1)}%)`);
-  } else if (ch24h < -3 && ch1h < 0) {
-    const pts = clamp((Math.abs(ch24h) / 10) * 15, 0, 15);
-    score += pts;
-    if (pts > 0) reasons.push(`Tendance 24h négative ${ch24h.toFixed(1)}%`);
+    reasons.push(`Momentum 4h ${mom4h.pct.toFixed(1)}% (tendance baissière saine)`);
+  } else if (mom4h.label === 'DUMP_EXCESSIVE') {
+    score -= 15;
+    reasons.push(`Momentum 4h ${mom4h.pct.toFixed(1)}% (trop dumped, dangereux SHORT)`);
+  } else if (mom4h.label === 'PUMP_SHORT') {
+    score += 15;
+    reasons.push(`Momentum 4h +${mom4h.pct.toFixed(1)}% (pump fort = bon setup SHORT)`);
   }
+  // PUMP_EXCESSIVE (>+12%) → 0pts (trop risqué)
+  // NEUTRAL, GOOD_LONG (+1% à +5%) → 0pts
 
+  // Volume vendeur
   if (ch1h < 0) {
     const volRatio = vol / 5_000_000;
     const pts = clamp((volRatio / 0.4) * 20, 0, 20);
@@ -206,13 +236,7 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     if (pts > 0) reasons.push(`Volume vendeur élevé ($${(vol / 1e6).toFixed(0)}M)`);
   }
 
-  const ch6hCapped = Math.max(-15, Math.min(15, ch24h / 4));
-  const avgHourly = ch6hCapped / 6;
-  if (ch1h < 0 && ch1h < avgHourly * 2) {
-    score += 10;
-    reasons.push(`Accélération baissière`);
-  }
-
+  // RSI
   if (binance?.rsi != null) {
     if (binance.rsi > 70) {
       score += 10;
@@ -222,6 +246,7 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     }
   }
 
+  // MACD
   if (binance?.macd != null) {
     if (binance.macd.histogram < -0.001) {
       score += 15;
@@ -232,6 +257,7 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     }
   }
 
+  // Bollinger Bands
   if (binance?.bb != null && binance.bb.upper > 0) {
     const cp = binance.lastClose ?? coin.current_price;
     if (cp > 0 && cp >= binance.bb.upper * 0.995) {
@@ -243,6 +269,7 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     }
   }
 
+  // Volume divergence
   if (binance?.volDivergence != null) {
     if (binance.volDivergence > 2 && ch1h < 0) {
       score += 10;
@@ -252,11 +279,13 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     }
   }
 
+  // Open Interest
   if (binance?.oiChange != null && binance.oiChange > 0 && ch1h < 0) {
     score += 10;
     reasons.push(`Open Interest en hausse avec prix en baisse`);
   }
 
+  // Funding Rate
   if (binance?.fundingRate != null) {
     if (binance.fundingRate > 0.002) {
       score += 10;
@@ -264,13 +293,6 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     } else if (binance.fundingRate < -0.001) {
       score -= 8;
     }
-  }
-
-  if (ch24h < -20) {
-    score -= 20;
-    reasons.push(`Pénalité dump excessif (24h ${ch24h.toFixed(0)}%)`);
-  } else if (ch24h < -15 && ch1h < -3) {
-    score -= 12;
   }
 
   return { score: Math.round(clamp(score, 0, 85)), direction: "SHORT", reasons };
