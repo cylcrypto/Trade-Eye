@@ -747,8 +747,9 @@ async function checkDbHealth() {
 
 let cronStarted = false;
 export function startCron() {
+  console.log(`[CronJob] startCron() appelé — cronStarted=${cronStarted} PID=${process.pid}`);
   if (cronStarted) {
-    console.log("[CronJob] startCron() appelé plusieurs fois — ignoré");
+    console.warn("[CronJob] ⚠️ startCron() appelé plusieurs fois — IGNORÉ (double appel détecté)");
     return;
   }
   cronStarted = true;
