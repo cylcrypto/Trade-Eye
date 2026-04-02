@@ -1,6 +1,6 @@
 import app, { initializeDatabase } from "./app.js";
 import { logger } from "./lib/logger.js";
-import { startCron, gracefulShutdown } from "./lib/cron.js";
+import { startCron, gracefulShutdown, getCachedPrice } from "./lib/cron.js";
 import { sendTelegram, fmtPrice } from "./lib/telegram.js";
 import { db } from "@workspace/db";
 import { signalsTable } from "@workspace/db/schema";
@@ -65,24 +65,42 @@ async function sendHourlyRecap() {
       return;
     }
 
-    // Récupère les prix actuels pour afficher la variation
+    // Récupère les prix actuels — d'abord depuis le cache du cron (pas d'appel API)
     const coinIds = [...new Set(pending.map(s => s.coin_id))];
-    let priceMap: Record<string, number> = {};
-    try {
-      const ids = coinIds.join(",");
-      const res = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
-        { signal: AbortSignal.timeout(10000) }
-      );
-      if (res.ok) {
-        const data = (await res.json()) as Record<string, { usd: number }>;
-        for (const id of coinIds) {
-          if (data[id]?.usd) priceMap[id] = data[id].usd;
-        }
-      }
-    } catch {
-      // Prix indisponibles — on affiche quand même sans variation
+    const priceMap: Record<string, number> = {};
+
+    // 1. Utiliser le cache de prix du cron (rempli toutes les 5min)
+    for (const id of coinIds) {
+      const cached = getCachedPrice(id);
+      if (cached !== null) priceMap[id] = cached;
     }
+
+    // 2. Fallback CoinGecko simple/price pour les coins absents du cache
+    const missingIds = coinIds.filter(id => priceMap[id] == null);
+    if (missingIds.length > 0) {
+      try {
+        const res = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${missingIds.join(",")}&vs_currencies=usd`,
+          { signal: AbortSignal.timeout(10000) }
+        );
+        if (res.status === 429) {
+          console.warn(`[HourlyRecap] CoinGecko 429 — prix indisponibles pour: ${missingIds.join(", ")}`);
+        } else if (!res.ok) {
+          console.warn(`[HourlyRecap] CoinGecko HTTP ${res.status} — prix indisponibles pour: ${missingIds.join(", ")}`);
+        } else {
+          const data = (await res.json()) as Record<string, { usd: number }>;
+          for (const id of missingIds) {
+            if (data[id]?.usd) priceMap[id] = data[id].usd;
+          }
+          console.log(`[HourlyRecap] Prix récupérés via CoinGecko: ${Object.keys(data).join(", ")}`);
+        }
+      } catch (e) {
+        console.warn(`[HourlyRecap] Erreur fetch prix CoinGecko:`, e instanceof Error ? e.message : String(e));
+      }
+    }
+
+    const hitCount = Object.keys(priceMap).length;
+    console.log(`[HourlyRecap] Prix disponibles: ${hitCount}/${coinIds.length} (cache: ${coinIds.length - missingIds.length}, CG: ${hitCount - (coinIds.length - missingIds.length)})`);
 
     const lines: string[] = [];
     for (const signal of pending) {

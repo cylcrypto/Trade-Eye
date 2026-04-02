@@ -103,7 +103,7 @@ function setCachedPrice(coinId: string, price: number) {
   priceCache.set(coinId, { price, ts: Date.now() });
 }
 
-function getCachedPrice(coinId: string): number | null {
+export function getCachedPrice(coinId: string): number | null {
   const entry = priceCache.get(coinId);
   if (!entry) return null;
   if (Date.now() - entry.ts > PRICE_CACHE_TTL) {
@@ -382,22 +382,27 @@ export async function runCron() {
 
     // 1. Fetch des coins
     const coins = await fetchAllCoins();
-    if (coins.length === 0) {
-      console.log("[CronJob] Aucun coin — cycle ignoré");
-      return;
-    }
 
-    // 2. Remplir le cache de prix AVANT la résolution TP/SL
-    for (const coin of coins) {
-      if (coin.current_price > 0) {
-        setCachedPrice(coin.id, coin.current_price);
+    // 2. Si des coins disponibles, remplir le cache de prix en premier
+    if (coins.length > 0) {
+      for (const coin of coins) {
+        if (coin.current_price > 0) {
+          setCachedPrice(coin.id, coin.current_price);
+        }
       }
     }
 
-    // 3. Résolution TP/SL — le cache est maintenant frais, moins d'appels API externes
+    // 3. Résolution TP/SL — TOUJOURS exécutée, même si fetchAllCoins a échoué (429)
+    //    Le cache précédent ou le fallback CoinGecko batch sont utilisés
     await resolveSignals();
 
-    // 4. Filtre liquidité
+    // 4. Skip génération signaux si pas de données de marché
+    if (coins.length === 0) {
+      console.log("[CronJob] Aucun coin — skip génération signaux");
+      return;
+    }
+
+    // 5. Filtre liquidité
     const liquid = coins.filter(
       (c) =>
         c.total_volume >= MIN_VOLUME &&
