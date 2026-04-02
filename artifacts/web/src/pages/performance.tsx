@@ -1,7 +1,6 @@
 import { useGetSignalsPerfo, useGetSignalsHistory, getExportSignalsUrl } from "@workspace/api-client-react";
-import { formatCurrency, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Layout } from "@/components/layout";
-import { CircularProgress } from "@/components/circular-progress";
 import { Download, TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, MinusCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -10,11 +9,14 @@ export default function PerformancePage() {
   const { data: perfo, isLoading: loadingPerfo } = useGetSignalsPerfo();
   const { data: history, isLoading: loadingHistory } = useGetSignalsHistory();
 
-  const scoreColorClass = !perfo
-    ? "text-muted-foreground"
-    : perfo.score7d >= 7 ? "text-primary" : perfo.score7d >= 5 ? "text-warning" : "text-destructive";
-
   const brackets = perfo?.brackets ?? { "60-64": 0, "65-69": 0, "70-74": 0, "75+": 0 };
+
+  const tp = perfo?.corrects ?? 0;
+  const sl = perfo?.incorrects ?? 0;
+  const pnlNet = (tp * 10) - (sl * 4);
+  const totalResolved = tp + sl;
+  const evPerTrade = totalResolved > 0 ? pnlNet / totalResolved : 0;
+  const pnlPositive = pnlNet >= 0;
 
   return (
     <Layout>
@@ -37,16 +39,20 @@ export default function PerformancePage() {
           </a>
         </div>
 
-        {/* Score ring + win rate + counts */}
+        {/* PNL NET + win rate + counts */}
         <div className="grid grid-cols-3 gap-3">
           <div className="border border-border bg-card rounded-md p-3 flex flex-col items-center justify-center">
-            <div className="text-[10px] font-bold text-muted-foreground tracking-widest mb-2">SCORE</div>
+            <div className="text-[10px] font-bold text-muted-foreground tracking-widest mb-2">PNL NET</div>
             {loadingPerfo ? (
-              <div className="w-16 h-16 rounded-full border-4 border-muted animate-pulse" />
+              <div className="w-16 h-8 bg-muted rounded animate-pulse" />
             ) : (
-              <CircularProgress value={perfo?.score7d || 0} max={10} colorClass={scoreColorClass} size={80} strokeWidth={6} />
+              <div className={cn("text-2xl font-display font-bold leading-none", pnlPositive ? "text-primary" : "text-destructive")}>
+                {pnlPositive ? "+" : ""}{pnlNet.toFixed(0)}€
+              </div>
             )}
-            <div className="text-[10px] text-muted-foreground mt-1">/10</div>
+            <div className="text-[10px] text-muted-foreground mt-1.5">
+              {loadingPerfo ? "" : `${tp}TP / ${sl}SL`}
+            </div>
           </div>
 
           <div className="border border-border bg-card rounded-md p-3 flex flex-col justify-center">
@@ -79,11 +85,11 @@ export default function PerformancePage() {
           </div>
         </div>
 
-        {/* LONG vs SHORT win rates */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* LONG vs SHORT win rates + EV */}
+        <div className="grid grid-cols-3 gap-3">
           <div className="border border-primary/20 bg-card rounded-md p-3">
             <div className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1 flex items-center gap-1">
-              <TrendingUp className="h-3 w-3 text-primary" /> LONG WIN RATE
+              <TrendingUp className="h-3 w-3 text-primary" /> LONG WR
             </div>
             <div className="text-2xl font-display font-bold text-primary">
               {loadingPerfo ? "--" : (perfo?.longWinRate || 0).toFixed(0)}%
@@ -91,11 +97,21 @@ export default function PerformancePage() {
           </div>
           <div className="border border-destructive/20 bg-card rounded-md p-3">
             <div className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1 flex items-center gap-1">
-              <TrendingDown className="h-3 w-3 text-destructive" /> SHORT WIN RATE
+              <TrendingDown className="h-3 w-3 text-destructive" /> SHORT WR
             </div>
             <div className="text-2xl font-display font-bold text-destructive">
               {loadingPerfo ? "--" : (perfo?.shortWinRate || 0).toFixed(0)}%
             </div>
+          </div>
+          <div className="border border-border bg-card rounded-md p-3">
+            <div className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">EV/TRADE</div>
+            {loadingPerfo ? (
+              <div className="h-7 bg-muted rounded animate-pulse w-12" />
+            ) : (
+              <div className={cn("text-2xl font-display font-bold", evPerTrade >= 0 ? "text-primary" : "text-destructive")}>
+                {evPerTrade >= 0 ? "+" : ""}{evPerTrade.toFixed(2)}€
+              </div>
+            )}
           </div>
         </div>
 
