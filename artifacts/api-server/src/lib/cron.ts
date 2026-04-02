@@ -428,6 +428,9 @@ export async function runCron() {
     let bestLongScore = 0;
     let bestLongSymbol = "";
 
+    // Coins éliminés avec un move 1h significatif (pour debug)
+    const eliminatedMovers: Array<{ symbol: string; ch1h: number; longScore: number; shortScore: number; longReasons: string[]; shortReasons: string[] }> = [];
+
     const DEBUG_TOKENS = ["bitcoin", "ethereum"];
 
     for (const coin of liquid) {
@@ -449,6 +452,12 @@ export async function runCron() {
           longReasons: ls.reasons,
           shortReasons: ss.reasons,
         });
+      } else {
+        // Tracker les gros movers éliminés (|ch1h| >= 3%)
+        const ch1h = coin.price_change_percentage_1h_in_currency;
+        if (Math.abs(ch1h) >= 3) {
+          eliminatedMovers.push({ symbol: coin.symbol.toUpperCase(), ch1h, longScore: ls.score, shortScore: ss.score, longReasons: ls.reasons, shortReasons: ss.reasons });
+        }
       }
     }
 
@@ -458,7 +467,21 @@ export async function runCron() {
       arr.map(c => `${c.coin.symbol.toUpperCase()}(${c[key]})`).join(" ") || "none";
     console.log(`[V5] Pre-score top LONG: ${fmtList(top3LongPre, "longScore")}`);
     console.log(`[V5] Pre-score top SHORT: ${fmtList(top3ShortPre, "shortScore")}`);
+    console.log(`[V5] Best scores globaux — LONG: ${bestLongSymbol.toUpperCase()}(${bestLongScore}) | SHORT: ${bestShortSymbol.toUpperCase()}(${bestShortScore})`);
     console.log(`[V5] ${candidates.length} candidat(s) >= ${MIN_SCORE}`);
+
+    // Log les gros movers éliminés (top 5 par |ch1h|)
+    if (eliminatedMovers.length > 0) {
+      eliminatedMovers.sort((a, b) => Math.abs(b.ch1h) - Math.abs(a.ch1h));
+      const top5 = eliminatedMovers.slice(0, 5);
+      console.log(`[V5] Movers éliminés (|1h| >= 3%) :`);
+      for (const m of top5) {
+        const sign = m.ch1h >= 0 ? "+" : "";
+        const whyLong = m.longReasons.slice(0, 2).join(" | ") || "—";
+        const whyShort = m.shortReasons.slice(0, 2).join(" | ") || "—";
+        console.log(`  ${m.symbol} 1h=${sign}${m.ch1h.toFixed(2)}% → LONG=${m.longScore} SHORT=${m.shortScore} | ${whyLong}`);
+      }
+    }
 
     // Trace BTC/ETH rank dans le classement
     for (const id of DEBUG_TOKENS) {
