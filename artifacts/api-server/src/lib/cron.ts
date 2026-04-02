@@ -1,6 +1,6 @@
 import { db, pool } from "@workspace/db";
 import { signalsTable } from "@workspace/db/schema";
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq, gte, or } from "drizzle-orm";
 import { getBinanceData, getBinanceRsiOnly, type BinanceData } from "./binance.js";
 import { getCoinGeckoOhlcData } from "./coingecko_ohlc.js";
 import { scoreLong, scoreShort, type CoinData } from "./scoring.js";
@@ -380,22 +380,22 @@ export async function runCron() {
   try {
     console.log(`[V4] Cycle @ ${new Date().toISOString()} — activité Replit simulée`);
 
-    // 1. Résolution TP/SL en premier
-    await resolveSignals();
-
-    // 2. Fetch des coins
+    // 1. Fetch des coins
     const coins = await fetchAllCoins();
     if (coins.length === 0) {
       console.log("[CronJob] Aucun coin — cycle ignoré");
       return;
     }
 
-    // 3. Remplir le cache de prix
+    // 2. Remplir le cache de prix AVANT la résolution TP/SL
     for (const coin of coins) {
       if (coin.current_price > 0) {
         setCachedPrice(coin.id, coin.current_price);
       }
     }
+
+    // 3. Résolution TP/SL — le cache est maintenant frais, moins d'appels API externes
+    await resolveSignals();
 
     // 4. Filtre liquidité
     const liquid = coins.filter(
@@ -596,11 +596,21 @@ export async function runCron() {
       } else if (longScore >= MIN_SCORE) {
         if (rsiVal != null) console.log(`[RSI DIVERGENCE] LONG ${coin.symbol.toUpperCase()} — RSI=${rsiVal.toFixed(0)} change_1h=${ch1h.toFixed(1)}% → OK`);
         const [existing, conflicting] = await dbQuery(() => Promise.all([
+          // Dedup LONG : bloquer si signal récent (< 120min) OU signal encore ouvert (non résolu)
           db.select().from(signalsTable)
-            .where(and(eq(signalsTable.symbol, coin.symbol), eq(signalsTable.direction, "LONG"), gte(signalsTable.created_at, dedupCutoff)))
+            .where(and(
+              eq(signalsTable.symbol, coin.symbol),
+              eq(signalsTable.direction, "LONG"),
+              or(gte(signalsTable.created_at, dedupCutoff), eq(signalsTable.resolved, false))
+            ))
             .limit(1),
+          // Conflit SHORT : bloquer si SHORT récent (< 2h) OU SHORT encore ouvert
           db.select().from(signalsTable)
-            .where(and(eq(signalsTable.symbol, coin.symbol), eq(signalsTable.direction, "SHORT"), gte(signalsTable.created_at, twoHoursAgo)))
+            .where(and(
+              eq(signalsTable.symbol, coin.symbol),
+              eq(signalsTable.direction, "SHORT"),
+              or(gte(signalsTable.created_at, twoHoursAgo), eq(signalsTable.resolved, false))
+            ))
             .limit(1),
         ]));
 
@@ -654,9 +664,9 @@ export async function runCron() {
           const msg = formatSignalMessage(coin.symbol, "LONG", longScore, price, longReasons, now, bd?.rsi, bd?.fundingRate, bd?.oiChange, tpPrice, slPrice);
           await sendTelegram(savedToDB ? msg : msg + "\n⚠️ Non enregistré en DB");
         } else if (existing.length > 0) {
-          console.log(`[V4] Dedup LONG ${coin.symbol.toUpperCase()} — already logged < ${DEDUP_MINUTES}min`);
+          console.log(`[V4] Dedup LONG ${coin.symbol.toUpperCase()} — signal récent ou encore ouvert (non résolu)`);
         } else {
-          console.log(`[V4] Blocked LONG ${coin.symbol.toUpperCase()} — contradictory SHORT < 2h`);
+          console.log(`[V4] Blocked LONG ${coin.symbol.toUpperCase()} — SHORT contradictoire récent ou encore ouvert`);
         }
       }
 
@@ -668,11 +678,21 @@ export async function runCron() {
       } else if (shortScore >= MIN_SCORE) {
         if (rsiVal != null) console.log(`[RSI DIVERGENCE] SHORT ${coin.symbol.toUpperCase()} — RSI=${rsiVal.toFixed(0)} change_1h=${ch1h.toFixed(1)}% → OK`);
         const [existing, conflicting] = await dbQuery(() => Promise.all([
+          // Dedup SHORT : bloquer si signal récent (< 120min) OU signal encore ouvert (non résolu)
           db.select().from(signalsTable)
-            .where(and(eq(signalsTable.symbol, coin.symbol), eq(signalsTable.direction, "SHORT"), gte(signalsTable.created_at, dedupCutoff)))
+            .where(and(
+              eq(signalsTable.symbol, coin.symbol),
+              eq(signalsTable.direction, "SHORT"),
+              or(gte(signalsTable.created_at, dedupCutoff), eq(signalsTable.resolved, false))
+            ))
             .limit(1),
+          // Conflit LONG : bloquer si LONG récent (< 2h) OU LONG encore ouvert
           db.select().from(signalsTable)
-            .where(and(eq(signalsTable.symbol, coin.symbol), eq(signalsTable.direction, "LONG"), gte(signalsTable.created_at, twoHoursAgo)))
+            .where(and(
+              eq(signalsTable.symbol, coin.symbol),
+              eq(signalsTable.direction, "LONG"),
+              or(gte(signalsTable.created_at, twoHoursAgo), eq(signalsTable.resolved, false))
+            ))
             .limit(1),
         ]));
 
@@ -726,9 +746,9 @@ export async function runCron() {
           const msg = formatSignalMessage(coin.symbol, "SHORT", shortScore, price, shortReasons, now, bd?.rsi, bd?.fundingRate, bd?.oiChange, tpPrice, slPrice);
           await sendTelegram(savedToDB ? msg : msg + "\n⚠️ Non enregistré en DB");
         } else if (existing.length > 0) {
-          console.log(`[V4] Dedup SHORT ${coin.symbol.toUpperCase()} — already logged < ${DEDUP_MINUTES}min`);
+          console.log(`[V4] Dedup SHORT ${coin.symbol.toUpperCase()} — signal récent ou encore ouvert (non résolu)`);
         } else {
-          console.log(`[V4] Blocked SHORT ${coin.symbol.toUpperCase()} — contradictory LONG < 2h`);
+          console.log(`[V4] Blocked SHORT ${coin.symbol.toUpperCase()} — LONG contradictoire récent ou encore ouvert`);
         }
       }
     }
