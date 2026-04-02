@@ -111,6 +111,13 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
   }
   // NEUTRAL, GOOD_SHORT (<-1% et >=-8%) → 0pts
 
+  // Sortie de range haussière : 4h flat + 15min commence à monter
+  if (mom4h.label === 'NEUTRAL' && mom15.label === 'GOOD_LONG') {
+    score += 20;
+    reasons.push(`Sortie de range haussière (4h=${mom4h.pct >= 0 ? '+' : ''}${mom4h.pct.toFixed(1)}% flat → 15min=+${mom15.pct.toFixed(1)}% cassure)`);
+    console.log(`[RANGE BREAKOUT] ${coin.symbol.toUpperCase()} : 4h=${mom4h.pct >= 0 ? '+' : ''}${mom4h.pct.toFixed(2)}% flat → 15min=+${mom15.pct.toFixed(2)}% cassure → +20pts`);
+  }
+
   // Volume
   const volRatio = vol / 5_000_000;
   const volPts = clamp((volRatio / 0.4) * 20, 0, 20);
@@ -232,6 +239,13 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
   }
   // PUMP_EXCESSIVE (>+12%) → 0pts (trop risqué)
   // NEUTRAL, GOOD_LONG (+1% à +5%) → 0pts
+
+  // Sortie de range baissière : 4h flat + 15min commence à baisser
+  if (mom4h.label === 'NEUTRAL' && mom15.label === 'GOOD_SHORT') {
+    score += 20;
+    reasons.push(`Sortie de range baissière (4h=${mom4h.pct >= 0 ? '+' : ''}${mom4h.pct.toFixed(1)}% flat → 15min=${mom15.pct.toFixed(1)}% cassure)`);
+    console.log(`[RANGE BREAKOUT] ${coin.symbol.toUpperCase()} : 4h=${mom4h.pct >= 0 ? '+' : ''}${mom4h.pct.toFixed(2)}% flat → 15min=${mom15.pct.toFixed(2)}% cassure → +20pts SHORT`);
+  }
 
   // Volume vendeur
   if (ch1h < 0) {
