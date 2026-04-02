@@ -197,10 +197,15 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     score -= 20;
     reasons.push(`Momentum 15min haussier (défavorable SHORT) +${mom15.pct.toFixed(1)}%`);
   } else if (mom15.label === 'NO_DATA') {
-    if (ch1h < -3) {
-      reasons.push(`Momentum 1h ${ch1h.toFixed(2)}% → move trop avancé (fallback)`);
+    if (ch1h > 5 && ch1h <= 12) {
+      score += 40;
+      reasons.push(`Momentum 1h +${ch1h.toFixed(2)}% → PUMP_SHORT setup (fallback)`);
+    } else if (ch1h > 12) {
+      reasons.push(`Momentum 1h +${ch1h.toFixed(2)}% → pump excessif, trop risqué SHORT (fallback)`);
     } else if (ch1h > 3) {
       reasons.push(`Momentum 1h +${ch1h.toFixed(2)}% → move trop avancé (fallback)`);
+    } else if (ch1h < -3) {
+      reasons.push(`Momentum 1h ${ch1h.toFixed(2)}% → move trop avancé (fallback)`);
     } else if (ch1h <= -0.4 && ch1h >= -2.5) {
       score += 40;
       reasons.push(`Momentum 1h ${ch1h.toFixed(2)}% bon setup SHORT (fallback)`);

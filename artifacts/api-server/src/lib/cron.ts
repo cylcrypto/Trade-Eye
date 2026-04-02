@@ -86,7 +86,8 @@ export const COINGECKO_MAPPING: Record<string, string> = {
   ankr: "ANKRUSDT",
 };
 
-const MIN_SCORE = 70;
+const MIN_SCORE = 70;          // Score minimum FINAL pour émettre un signal
+const PRE_SCORE_THRESHOLD = 40; // Score minimum au pre-score pour passer à l'enrichissement OHLC
 const MIN_VOLUME = 3_000_000;
 const BLACKLISTED_TOKENS = ["BAN", "AKT", "M", "TRIA", "ANKR", "PIPPIN"];
 const DEDUP_MINUTES = 120;
@@ -441,10 +442,10 @@ export async function runCron() {
       if (ss.score > bestShortScore) { bestShortScore = ss.score; bestShortSymbol = coin.symbol; }
 
       if (DEBUG_TOKENS.includes(coin.id)) {
-        console.log(`[DEBUG ${coin.symbol.toUpperCase()}] Pre-score LONG=${ls.score} SHORT=${ss.score} — ${ls.score >= MIN_SCORE || ss.score >= MIN_SCORE ? "✅ dans candidates" : "❌ éliminé (< MIN_SCORE)"}`);
+        console.log(`[DEBUG ${coin.symbol.toUpperCase()}] Pre-score LONG=${ls.score} SHORT=${ss.score} — ${ls.score >= PRE_SCORE_THRESHOLD || ss.score >= PRE_SCORE_THRESHOLD ? "✅ dans candidates" : `❌ éliminé (< ${PRE_SCORE_THRESHOLD})`}`);
       }
 
-      if (ls.score >= MIN_SCORE || ss.score >= MIN_SCORE) {
+      if (ls.score >= PRE_SCORE_THRESHOLD || ss.score >= PRE_SCORE_THRESHOLD) {
         candidates.push({
           coin,
           longScore: ls.score,
@@ -461,14 +462,14 @@ export async function runCron() {
       }
     }
 
-    const top3LongPre = candidates.filter(c => c.longScore >= MIN_SCORE).sort((a, b) => b.longScore - a.longScore).slice(0, 3);
-    const top3ShortPre = candidates.filter(c => c.shortScore >= MIN_SCORE).sort((a, b) => b.shortScore - a.shortScore).slice(0, 3);
+    const top3LongPre = [...candidates].sort((a, b) => b.longScore - a.longScore).slice(0, 3);
+    const top3ShortPre = [...candidates].sort((a, b) => b.shortScore - a.shortScore).slice(0, 3);
     const fmtList = (arr: typeof candidates, key: "longScore" | "shortScore") =>
       arr.map(c => `${c.coin.symbol.toUpperCase()}(${c[key]})`).join(" ") || "none";
     console.log(`[V5] Pre-score top LONG: ${fmtList(top3LongPre, "longScore")}`);
     console.log(`[V5] Pre-score top SHORT: ${fmtList(top3ShortPre, "shortScore")}`);
     console.log(`[V5] Best scores globaux — LONG: ${bestLongSymbol.toUpperCase()}(${bestLongScore}) | SHORT: ${bestShortSymbol.toUpperCase()}(${bestShortScore})`);
-    console.log(`[V5] ${candidates.length} candidat(s) >= ${MIN_SCORE}`);
+    console.log(`[V5] ${candidates.length} candidat(s) >= ${PRE_SCORE_THRESHOLD} (pre-score threshold)`);
 
     // Log les gros movers éliminés (top 5 par |ch1h|)
     if (eliminatedMovers.length > 0) {
@@ -488,8 +489,8 @@ export async function runCron() {
       const c = candidates.find(x => x.coin.id === id);
       if (!c) continue;
       const sym = c.coin.symbol.toUpperCase();
-      const longRank = candidates.filter(x => x.longScore >= MIN_SCORE).sort((a, b) => b.longScore - a.longScore).findIndex(x => x.coin.id === id) + 1;
-      const shortRank = candidates.filter(x => x.shortScore >= MIN_SCORE).sort((a, b) => b.shortScore - a.shortScore).findIndex(x => x.coin.id === id) + 1;
+      const longRank = [...candidates].sort((a, b) => b.longScore - a.longScore).findIndex(x => x.coin.id === id) + 1;
+      const shortRank = [...candidates].sort((a, b) => b.shortScore - a.shortScore).findIndex(x => x.coin.id === id) + 1;
       const inTop3Long = longRank > 0 && longRank <= 3;
       const inTop3Short = shortRank > 0 && shortRank <= 3;
       const binanceKey = COINGECKO_MAPPING[id];
@@ -497,12 +498,11 @@ export async function runCron() {
     }
 
     // 6. Enrichissement dual-source : top 3 LONG + top 3 SHORT
-    const top3Long = candidates
-      .filter(c => c.longScore >= MIN_SCORE)
+    // Pas de filtre MIN_SCORE ici — le filtre final est appliqué après enrichissement OHLC
+    const top3Long = [...candidates]
       .sort((a, b) => b.longScore - a.longScore)
       .slice(0, 3);
-    const top3Short = candidates
-      .filter(c => c.shortScore >= MIN_SCORE)
+    const top3Short = [...candidates]
       .sort((a, b) => b.shortScore - a.shortScore)
       .slice(0, 3);
 
@@ -572,12 +572,9 @@ export async function runCron() {
       });
     }
 
-    const enriched: typeof candidates = [];
-    for (const c of candidates) {
-      enriched.push(enrichedMap.get(c.coin.id) ?? c);
-    }
-
     // 7. Insertion des signaux avec TP/SL
+    // Seuls les coins enrichis (top3Long + top3Short) passent au scoring final
+    const enriched = [...toEnrichMap.values()].map(c => enrichedMap.get(c.coin.id) ?? c);
     const btcCoin = coins.find(c => c.id === "bitcoin");
     const btcCurrentPrice = btcCoin?.current_price ?? 0;
     const btcTrend = computeBtcTrend(btcCurrentPrice);
