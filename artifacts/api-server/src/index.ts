@@ -4,7 +4,7 @@ import { startCron, gracefulShutdown, getCachedPrice } from "./lib/cron.js";
 import { sendTelegram, fmtPrice } from "./lib/telegram.js";
 import { db } from "@workspace/db";
 import { signalsTable } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 const rawPort = process.env["PORT"];
 
@@ -57,7 +57,7 @@ setInterval(async () => {
 async function sendHourlyRecap() {
   try {
     const pending = await db.select().from(signalsTable)
-      .where(eq(signalsTable.resolved, false))
+      .where(and(eq(signalsTable.resolved, false), eq(signalsTable.version, "v5")))
       .orderBy(desc(signalsTable.created_at));
 
     if (pending.length === 0) {
