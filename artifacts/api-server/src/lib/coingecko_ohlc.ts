@@ -79,8 +79,10 @@ export async function getCoinGeckoOhlcData(coinId: string): Promise<BinanceData 
 
     const closes = raw.map((c) => c[4]);
 
+    const rsiRaw = calcRSI(closes, 14);
+
     const data: BinanceData = {
-      rsi: calcRSI(closes, 14),
+      rsi: rsiRaw > 0 ? rsiRaw : null, // RSI=0 = cas dégénéré (avgGain=0 sur 14 périodes) → ignoré
       macd: calcMACD(closes),
       bb: calcBollingerBands(closes),
       volDivergence: null,
