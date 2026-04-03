@@ -348,7 +348,7 @@ async function handleTelegramExport() {
       .map(([sym, v]) => `  ${sym}: ${v.correct}/${v.total} (${((v.correct / v.total) * 100).toFixed(0)}%)`);
 
     const lines: string[] = [
-      "=== TRADEYE V4 — Export Signaux ===",
+      "=== TRADEYE V5 — Export Signaux ===",
       `Généré le : ${new Date().toLocaleString("fr-FR")}`,
       `Total : ${signals.length} signaux | ${resolved.length} résolus`,
       "",
@@ -361,14 +361,25 @@ async function handleTelegramExport() {
       ...(topTokens.length ? topTokens : ["  Pas encore de données"]),
       "",
       "--- Historique ---",
-      ...signals.map(s => {
+      ...signals.flatMap(s => {
         const date = new Date(s.created_at).toLocaleString("fr-FR");
         const tp = s.tp_price ? ` | TP:$${s.tp_price}` : "";
         const sl = s.sl_price ? ` | SL:$${s.sl_price}` : "";
         const status = s.resolved
           ? `${s.result?.toUpperCase()} | $${s.exit_price} | ${s.pct_change ? (parseFloat(s.pct_change) >= 0 ? "+" : "") + parseFloat(s.pct_change).toFixed(2) + "%" : ""} | ${s.pts}/10`
           : "EN COURS";
-        return `[${date}] ${s.direction} ${s.symbol.toUpperCase()} | Score: ${s.signal_score}/100 | $${s.entry_price}${tp}${sl} | ${status}`;
+        const mainLine = `[${date}] ${s.direction} ${s.symbol.toUpperCase()} | Score: ${s.signal_score}/100 | $${s.entry_price}${tp}${sl} | ${status}`;
+        const reasonsRaw = s.reasons as string[] | string | null | undefined;
+        let reasonsText: string | null = null;
+        if (Array.isArray(reasonsRaw) && reasonsRaw.length > 0) {
+          reasonsText = reasonsRaw.join(" | ");
+        } else if (typeof reasonsRaw === "string" && reasonsRaw.trim().length > 0) {
+          reasonsText = reasonsRaw.startsWith("[")
+            ? (() => { try { const p = JSON.parse(reasonsRaw); return Array.isArray(p) ? p.join(" | ") : reasonsRaw; } catch { return reasonsRaw; } })()
+            : reasonsRaw;
+        }
+        const reasonsLine = reasonsText ? `  → Raisons: ${reasonsText}` : null;
+        return reasonsLine ? [mainLine, reasonsLine] : [mainLine];
       }),
     ];
 

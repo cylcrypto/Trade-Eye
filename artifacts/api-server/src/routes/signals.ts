@@ -147,7 +147,24 @@ router.get("/signals/export", async (req, res) => {
     lines.push("");
 
     for (const s of signals) {
-      lines.push(`[${s.created_at}] ${s.direction} ${s.symbol.toUpperCase()} score=${s.signal_score} entry=${s.entry_price} resolved=${s.resolved} result=${s.result ?? "pending"} pct=${s.pct_change ?? "N/A"}`);
+      const tp = s.tp_price ? ` | TP:$${s.tp_price}` : "";
+      const sl = s.sl_price ? ` | SL:$${s.sl_price}` : "";
+      const status = s.resolved
+        ? `${s.result?.toUpperCase()} | $${s.exit_price} | ${s.pct_change ? (parseFloat(s.pct_change) >= 0 ? "+" : "") + parseFloat(s.pct_change).toFixed(2) + "%" : ""} | ${s.pts}/10`
+        : "EN COURS";
+      lines.push(`[${new Date(s.created_at).toLocaleString("fr-FR")}] ${s.direction} ${s.symbol.toUpperCase()} | Score: ${s.signal_score}/100 | $${s.entry_price}${tp}${sl} | ${status}`);
+      const reasonsRaw = s.reasons as string[] | string | null | undefined;
+      let reasonsText: string | null = null;
+      if (Array.isArray(reasonsRaw) && reasonsRaw.length > 0) {
+        reasonsText = reasonsRaw.join(" | ");
+      } else if (typeof reasonsRaw === "string" && reasonsRaw.trim().length > 0) {
+        reasonsText = reasonsRaw.startsWith("[")
+          ? (() => { try { const p = JSON.parse(reasonsRaw); return Array.isArray(p) ? p.join(" | ") : reasonsRaw; } catch { return reasonsRaw; } })()
+          : reasonsRaw;
+      }
+      if (reasonsText) {
+        lines.push(`  → Raisons: ${reasonsText}`);
+      }
     }
 
     res.setHeader("Content-Type", "text/plain");
