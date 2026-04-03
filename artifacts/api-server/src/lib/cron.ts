@@ -86,7 +86,7 @@ export const COINGECKO_MAPPING: Record<string, string> = {
   ankr: "ANKRUSDT",
 };
 
-const MIN_SCORE = 70;          // Score minimum FINAL pour émettre un signal
+const MIN_SCORE = 65;          // Score minimum FINAL pour émettre un signal
 const PRE_SCORE_THRESHOLD = 40; // Score minimum au pre-score pour passer à l'enrichissement OHLC
 const MIN_VOLUME = 3_000_000;
 const BLACKLISTED_TOKENS = ["BAN", "AKT", "M", "TRIA", "ANKR", "PIPPIN"];
@@ -611,8 +611,8 @@ export async function runCron() {
       const rsiDivBlockLong  = rsiVal != null && ch1h > 0 && rsiVal < 45;
       const rsiDivBlockShort = rsiVal != null && ch1h < 0 && rsiVal > 55;
 
-      if (!bd) {
-        console.log(`[SCORING] ${coin.symbol.toUpperCase()} bloqué — aucune donnée technique disponible`);
+      if (!bd?.ohlcCandles) {
+        console.log(`[SCORING] ${coin.symbol.toUpperCase()} bloqué — aucune donnée OHLC disponible`);
         continue;
       }
 

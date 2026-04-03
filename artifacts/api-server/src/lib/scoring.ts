@@ -65,7 +65,7 @@ function calculate4hMomentum(ohlc: number[][] | null | undefined, symbol: string
 }
 
 export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
-  const { price_change_percentage_1h_in_currency: ch1h, total_volume: vol } = coin;
+  const { price_change_percentage_1h_in_currency: ch1h, price_change_percentage_24h_in_currency: ch24h, total_volume: vol } = coin;
   const reasons: string[] = [];
   let score = 0;
 
@@ -123,6 +123,13 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
   const volPts = clamp((volRatio / 0.4) * 20, 0, 20);
   score += volPts;
   if (volPts > 0) reasons.push(`Volume fort ($${(vol / 1e6).toFixed(0)}M)`);
+
+  // Filtre de volatilité minimale (pénalise les large caps trop stables)
+  if (Math.abs(ch24h) < 3) {
+    score -= 20;
+    reasons.push(`Token trop stable (24h=${ch24h >= 0 ? '+' : ''}${ch24h.toFixed(1)}%)`);
+    if (binance != null) console.log(`[VOLATILITE] ${coin.symbol.toUpperCase()} : 24h=${ch24h >= 0 ? '+' : ''}${ch24h.toFixed(1)}% → token trop stable (-20pts)`);
+  }
 
   // RSI
   if (binance?.rsi != null) {
@@ -188,7 +195,7 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
 }
 
 export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
-  const { price_change_percentage_1h_in_currency: ch1h, total_volume: vol } = coin;
+  const { price_change_percentage_1h_in_currency: ch1h, price_change_percentage_24h_in_currency: ch24h, total_volume: vol } = coin;
   const reasons: string[] = [];
   let score = 0;
 
@@ -253,6 +260,13 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     const pts = clamp((volRatio / 0.4) * 20, 0, 20);
     score += pts;
     if (pts > 0) reasons.push(`Volume vendeur élevé ($${(vol / 1e6).toFixed(0)}M)`);
+  }
+
+  // Filtre de volatilité minimale (pénalise les large caps trop stables)
+  if (Math.abs(ch24h) < 3) {
+    score -= 20;
+    reasons.push(`Token trop stable (24h=${ch24h >= 0 ? '+' : ''}${ch24h.toFixed(1)}%)`);
+    if (binance != null) console.log(`[VOLATILITE] ${coin.symbol.toUpperCase()} : 24h=${ch24h >= 0 ? '+' : ''}${ch24h.toFixed(1)}% → token trop stable (-20pts)`);
   }
 
   // RSI
