@@ -87,7 +87,7 @@ export const COINGECKO_MAPPING: Record<string, string> = {
 };
 
 const MIN_SCORE = 65;          // Score minimum FINAL pour émettre un signal
-const PRE_SCORE_THRESHOLD = 40; // Score minimum au pre-score pour passer à l'enrichissement OHLC
+// PRE_SCORE_THRESHOLD est calculé dynamiquement chaque cycle selon la dispersion marché
 const MIN_VOLUME = 3_000_000;
 const BLACKLISTED_TOKENS = ["BAN", "AKT", "M", "TRIA", "ANKR", "PIPPIN"];
 const DEDUP_MINUTES = 120;
@@ -417,6 +417,24 @@ export async function runCron() {
 
     console.log(`[V5] ${liquid.length} coins liquides (vol > $${(MIN_VOLUME / 1e6).toFixed(0)}M)`);
 
+    // Dispersion marché : % de coins avec |ch1h| > 2%
+    const movingCount = liquid.filter(c => Math.abs(c.price_change_percentage_1h_in_currency ?? 0) > 2).length;
+    const dispersionPct = liquid.length > 0 ? (movingCount / liquid.length) * 100 : 0;
+    let preScoreThreshold: number;
+    let marketContext: string;
+    if (dispersionPct > 15) {
+      preScoreThreshold = 35;
+      marketContext = "marché actif";
+    } else if (dispersionPct >= 8) {
+      preScoreThreshold = 40;
+      marketContext = "marché normal";
+    } else {
+      preScoreThreshold = 50;
+      marketContext = "marché calme";
+    }
+    console.log(`[MARKET] Dispersion: ${dispersionPct.toFixed(1)}% tokens bougent > 2% sur 1h — ${dispersionPct > 15 ? "contexte favorable" : dispersionPct >= 8 ? "contexte normal" : "contexte peu actif"}`);
+    console.log(`[MARKET] PRE_SCORE_THRESHOLD ajusté à ${preScoreThreshold} (${marketContext})`);
+
     // 5. Scoring LONG et SHORT pour tous les coins
     const candidates: Array<{
       coin: CoinData;
@@ -445,10 +463,10 @@ export async function runCron() {
       if (ss.score > bestShortScore) { bestShortScore = ss.score; bestShortSymbol = coin.symbol; }
 
       if (DEBUG_TOKENS.includes(coin.id)) {
-        console.log(`[DEBUG ${coin.symbol.toUpperCase()}] Pre-score LONG=${ls.score} SHORT=${ss.score} — ${ls.score >= PRE_SCORE_THRESHOLD || ss.score >= PRE_SCORE_THRESHOLD ? "✅ dans candidates" : `❌ éliminé (< ${PRE_SCORE_THRESHOLD})`}`);
+        console.log(`[DEBUG ${coin.symbol.toUpperCase()}] Pre-score LONG=${ls.score} SHORT=${ss.score} — ${ls.score >= preScoreThreshold || ss.score >= preScoreThreshold ? "✅ dans candidates" : `❌ éliminé (< ${preScoreThreshold})`}`);
       }
 
-      if (ls.score >= PRE_SCORE_THRESHOLD || ss.score >= PRE_SCORE_THRESHOLD) {
+      if (ls.score >= preScoreThreshold || ss.score >= preScoreThreshold) {
         candidates.push({
           coin,
           longScore: ls.score,
@@ -472,7 +490,7 @@ export async function runCron() {
     console.log(`[V5] Pre-score top LONG: ${fmtList(top3LongPre, "longScore")}`);
     console.log(`[V5] Pre-score top SHORT: ${fmtList(top3ShortPre, "shortScore")}`);
     console.log(`[V5] Best scores globaux — LONG: ${bestLongSymbol.toUpperCase()}(${bestLongScore}) | SHORT: ${bestShortSymbol.toUpperCase()}(${bestShortScore})`);
-    console.log(`[V5] ${candidates.length} candidat(s) >= ${PRE_SCORE_THRESHOLD} (pre-score threshold)`);
+    console.log(`[V5] ${candidates.length} candidat(s) >= ${preScoreThreshold} (pre-score threshold)`);
 
     // Log les gros movers éliminés (top 5 par |ch1h|)
     if (eliminatedMovers.length > 0) {
