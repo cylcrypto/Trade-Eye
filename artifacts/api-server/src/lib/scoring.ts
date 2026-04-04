@@ -32,8 +32,8 @@ function calculate15minMomentum(ohlc: number[][] | null | undefined, symbol: str
   const pct = ((currentClose - prevClose) / prevClose) * 100;
   let label = 'NEUTRAL';
   if (pct > 3)          label = 'TOO_STRONG_UP';
-  else if (pct >= 0.5)  label = 'GOOD_LONG';
-  else if (pct >= -0.5) label = 'RANGE';
+  else if (pct >= 0.8)  label = 'GOOD_LONG';
+  else if (pct >= -0.8) label = 'RANGE';
   else if (pct <= -3)   label = 'TOO_STRONG_DOWN';
   else                  label = 'GOOD_SHORT';
 
@@ -211,10 +211,10 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     score -= 20;
     reasons.push(`Momentum 15min haussier (défavorable SHORT) +${mom15.pct.toFixed(1)}%`);
   } else if (mom15.label === 'NO_DATA') {
-    if (ch1h > 5 && ch1h <= 12) {
+    if (ch1h > 5 && ch1h <= 16) {
       score += 40;
       reasons.push(`Momentum 1h +${ch1h.toFixed(2)}% → PUMP_SHORT setup (fallback)`);
-    } else if (ch1h > 12) {
+    } else if (ch1h > 16) {
       reasons.push(`Momentum 1h +${ch1h.toFixed(2)}% → pump excessif, trop risqué SHORT (fallback)`);
     } else if (ch1h > 3) {
       reasons.push(`Momentum 1h +${ch1h.toFixed(2)}% → move trop avancé (fallback)`);
