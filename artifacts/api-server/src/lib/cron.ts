@@ -662,7 +662,7 @@ export async function runCron() {
 
         if (existing.length === 0 && conflicting.length === 0) {
           const now = new Date();
-          const tpPrice = (entryNum * 1.05).toString();
+          const tpPrice = (entryNum * 1.04).toString();
           const slPrice = (entryNum * 0.98).toString();
           let savedToDB = false;
           for (let attempt = 0; attempt < 3; attempt++) {
@@ -744,7 +744,7 @@ export async function runCron() {
 
         if (existing.length === 0 && conflicting.length === 0) {
           const now = new Date();
-          const tpPrice = (entryNum * 0.95).toString();
+          const tpPrice = (entryNum * 0.96).toString();
           const slPrice = (entryNum * 1.02).toString();
           let savedToDB = false;
           for (let attempt = 0; attempt < 3; attempt++) {
