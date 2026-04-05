@@ -32,8 +32,8 @@ function calculate15minMomentum(ohlc: number[][] | null | undefined, symbol: str
   const pct = ((currentClose - prevClose) / prevClose) * 100;
   let label = 'NEUTRAL';
   if (pct > 3)          label = 'TOO_STRONG_UP';
-  else if (pct >= 0.8)  label = 'GOOD_LONG';
-  else if (pct >= -0.8) label = 'RANGE';
+  else if (pct >= 1.2)  label = 'GOOD_LONG';
+  else if (pct >= -1.2) label = 'RANGE';
   else if (pct <= -3)   label = 'TOO_STRONG_DOWN';
   else                  label = 'GOOD_SHORT';
 
@@ -75,7 +75,7 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
     score += 40;
     reasons.push(`Momentum 15min +${mom15.pct.toFixed(1)}% (bon setup LONG)`);
   } else if (mom15.label === 'RANGE') {
-    score += 20;
+    score += 6;
     reasons.push(`Momentum 15min range ${mom15.pct.toFixed(1)}%`);
   } else if (mom15.label === 'GOOD_SHORT' || mom15.label === 'TOO_STRONG_DOWN') {
     score -= 20;
@@ -100,8 +100,11 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
   // Momentum 4h — tendance de fond court terme (remplace ch24h)
   const mom4h = calculate4hMomentum(binance?.ohlcCandles, coin.symbol?.toUpperCase() || 'UNKNOWN');
   if (mom4h.label === 'GOOD_LONG') {
-    score += 15;
-    reasons.push(`Momentum 4h +${mom4h.pct.toFixed(1)}% (tendance haussière saine)`);
+    if (mom4h.pct > 2.5) {
+      score += 15;
+      reasons.push(`Momentum 4h +${mom4h.pct.toFixed(1)}% (tendance haussière saine)`);
+    }
+    // 4h entre +1% et +2.5% → 0pts (tendance trop faible)
   } else if (mom4h.label === 'PUMP_SHORT' || mom4h.label === 'PUMP_EXCESSIVE') {
     score -= 15;
     reasons.push(`Momentum 4h +${mom4h.pct.toFixed(1)}% (trop pumped, dangereux LONG)`);
@@ -133,7 +136,11 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
 
   // RSI
   if (binance?.rsi != null) {
-    if (binance.rsi < 30) {
+    if (binance.rsi < 15) {
+      score -= 10;
+      reasons.push(`RSI extrême ${binance.rsi.toFixed(0)} (faux rebond probable)`);
+      console.log(`[RSI] ${coin.symbol.toUpperCase()} : RSI=${binance.rsi.toFixed(0)} → faux rebond probable (-10pts)`);
+    } else if (binance.rsi < 30) {
       score += 10;
       reasons.push(`RSI survendu ${binance.rsi.toFixed(0)}`);
     } else if (binance.rsi > 70) {
@@ -205,7 +212,7 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     score += 40;
     reasons.push(`Momentum 15min ${mom15.pct.toFixed(1)}% (bon setup SHORT)`);
   } else if (mom15.label === 'RANGE') {
-    score += 20;
+    score += 6;
     reasons.push(`Momentum 15min range ${mom15.pct.toFixed(1)}%`);
   } else if (mom15.label === 'GOOD_LONG' || mom15.label === 'TOO_STRONG_UP') {
     score -= 20;
@@ -235,8 +242,11 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
   // Momentum 4h — tendance de fond court terme (remplace ch24h), silent=true car déjà loggé via scoreLong
   const mom4h = calculate4hMomentum(binance?.ohlcCandles, coin.symbol?.toUpperCase() || 'UNKNOWN', true);
   if (mom4h.label === 'GOOD_SHORT') {
-    score += 15;
-    reasons.push(`Momentum 4h ${mom4h.pct.toFixed(1)}% (tendance baissière saine)`);
+    if (mom4h.pct < -2.5) {
+      score += 15;
+      reasons.push(`Momentum 4h ${mom4h.pct.toFixed(1)}% (tendance baissière saine)`);
+    }
+    // 4h entre -1% et -2.5% → 0pts (tendance trop faible)
   } else if (mom4h.label === 'DUMP_EXCESSIVE') {
     score -= 15;
     reasons.push(`Momentum 4h ${mom4h.pct.toFixed(1)}% (trop dumped, dangereux SHORT)`);

@@ -86,7 +86,7 @@ export const COINGECKO_MAPPING: Record<string, string> = {
   ankr: "ANKRUSDT",
 };
 
-const MIN_SCORE = 65;          // Score minimum FINAL pour émettre un signal
+const MIN_SCORE = 75;          // Score minimum FINAL pour émettre un signal
 // PRE_SCORE_THRESHOLD est calculé dynamiquement chaque cycle selon la dispersion marché
 const MIN_VOLUME = 3_000_000;
 const BLACKLISTED_TOKENS = ["BAN", "AKT", "M", "TRIA", "ANKR", "PIPPIN"];
