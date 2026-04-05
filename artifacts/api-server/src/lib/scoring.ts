@@ -32,8 +32,8 @@ function calculate15minMomentum(ohlc: number[][] | null | undefined, symbol: str
   const pct = ((currentClose - prevClose) / prevClose) * 100;
   let label = 'NEUTRAL';
   if (pct > 3)          label = 'TOO_STRONG_UP';
-  else if (pct >= 1.2)  label = 'GOOD_LONG';
-  else if (pct >= -1.2) label = 'RANGE';
+  else if (pct >= 1.0)  label = 'GOOD_LONG';
+  else if (pct >= -1.0) label = 'RANGE';
   else if (pct <= -3)   label = 'TOO_STRONG_DOWN';
   else                  label = 'GOOD_SHORT';
 
