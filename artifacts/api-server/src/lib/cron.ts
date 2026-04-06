@@ -475,9 +475,31 @@ export async function runCron() {
           shortReasons: ss.reasons,
         });
       } else {
-        // Tracker les gros movers éliminés (|ch1h| >= 3%)
         const ch1h = coin.price_change_percentage_1h_in_currency;
-        if (Math.abs(ch1h) >= 3) {
+        const ch24h = coin.price_change_percentage_24h_in_currency;
+
+        let boostedLong = ls.score;
+        let boostedShort = ss.score;
+        let boostedEntry = false;
+
+        // Gros mover LONG potentiel : 1h entre +3% et +8% ET 24h positif
+        if (ch1h >= 3 && ch1h <= 8 && ch24h > 0) {
+          boostedLong = Math.max(ls.score, 40);
+          boostedEntry = true;
+          console.log(`[PRE-SCORE] ${coin.symbol.toUpperCase()} 1h=+${ch1h.toFixed(1)}% → candidat LONG potentiel (40pts)`);
+        }
+
+        // Gros mover SHORT potentiel : 1h entre -3% et -8% ET 24h négatif
+        if (ch1h <= -3 && ch1h >= -8 && ch24h < 0) {
+          boostedShort = Math.max(ss.score, 40);
+          boostedEntry = true;
+          console.log(`[PRE-SCORE] ${coin.symbol.toUpperCase()} 1h=${ch1h.toFixed(1)}% → candidat SHORT potentiel (40pts)`);
+        }
+
+        if (boostedEntry) {
+          candidates.push({ coin, longScore: boostedLong, shortScore: boostedShort, longReasons: ls.reasons, shortReasons: ss.reasons });
+        } else if (Math.abs(ch1h) >= 3) {
+          // Tracker les gros movers encore éliminés (|ch1h| >= 3%)
           eliminatedMovers.push({ symbol: coin.symbol.toUpperCase(), ch1h, longScore: ls.score, shortScore: ss.score, longReasons: ls.reasons, shortReasons: ss.reasons });
         }
       }
