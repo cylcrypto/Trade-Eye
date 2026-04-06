@@ -103,8 +103,11 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
     if (mom4h.pct > 2.5) {
       score += 15;
       reasons.push(`Momentum 4h +${mom4h.pct.toFixed(1)}% (tendance haussière saine)`);
+    } else {
+      score -= 10;
+      reasons.push(`Momentum 4h +${mom4h.pct.toFixed(1)}% (tendance faible)`);
+      console.log(`[MOMENTUM 4h] ${coin.symbol.toUpperCase()} : +${mom4h.pct.toFixed(1)}% → FAIBLE_LONG (-10pts)`);
     }
-    // 4h entre +1% et +2.5% → 0pts (tendance trop faible)
   } else if (mom4h.label === 'PUMP_SHORT' || mom4h.label === 'PUMP_EXCESSIVE') {
     score -= 15;
     reasons.push(`Momentum 4h +${mom4h.pct.toFixed(1)}% (trop pumped, dangereux LONG)`);
@@ -136,10 +139,10 @@ export function scoreLong(coin: CoinData, binance?: BinanceData): ScoreResult {
 
   // RSI
   if (binance?.rsi != null) {
-    if (binance.rsi < 15) {
-      score -= 10;
-      reasons.push(`RSI extrême ${binance.rsi.toFixed(0)} (faux rebond probable)`);
-      console.log(`[RSI] ${coin.symbol.toUpperCase()} : RSI=${binance.rsi.toFixed(0)} → faux rebond probable (-10pts)`);
+    if (binance.rsi < 18) {
+      score -= 15;
+      reasons.push(`RSI extrême survendu ${binance.rsi.toFixed(0)} → faux rebond probable`);
+      console.log(`[RSI] ${coin.symbol.toUpperCase()} : RSI=${binance.rsi.toFixed(0)} → faux rebond probable (-15pts)`);
     } else if (binance.rsi < 30) {
       score += 10;
       reasons.push(`RSI survendu ${binance.rsi.toFixed(0)}`);
@@ -245,8 +248,11 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
     if (mom4h.pct < -2.5) {
       score += 15;
       reasons.push(`Momentum 4h ${mom4h.pct.toFixed(1)}% (tendance baissière saine)`);
+    } else {
+      score -= 10;
+      reasons.push(`Momentum 4h ${mom4h.pct.toFixed(1)}% (tendance faible)`);
+      console.log(`[MOMENTUM 4h] ${coin.symbol.toUpperCase()} : ${mom4h.pct.toFixed(1)}% → FAIBLE_SHORT (-10pts)`);
     }
-    // 4h entre -1% et -2.5% → 0pts (tendance trop faible)
   } else if (mom4h.label === 'DUMP_EXCESSIVE') {
     score -= 15;
     reasons.push(`Momentum 4h ${mom4h.pct.toFixed(1)}% (trop dumped, dangereux SHORT)`);
@@ -281,7 +287,11 @@ export function scoreShort(coin: CoinData, binance?: BinanceData): ScoreResult {
 
   // RSI
   if (binance?.rsi != null) {
-    if (binance.rsi > 70) {
+    if (binance.rsi > 82) {
+      score -= 15;
+      reasons.push(`RSI extrême suracheté ${binance.rsi.toFixed(0)} → faux rebond SHORT probable`);
+      console.log(`[RSI] ${coin.symbol.toUpperCase()} : RSI=${binance.rsi.toFixed(0)} → faux rebond SHORT probable (-15pts)`);
+    } else if (binance.rsi > 70) {
       score += 10;
       reasons.push(`RSI suracheté ${binance.rsi.toFixed(0)}`);
     } else if (binance.rsi < 30) {
