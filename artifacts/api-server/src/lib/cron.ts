@@ -451,7 +451,7 @@ export async function runCron() {
     let bestLongSymbol = "";
 
     // Coins éliminés avec un move 1h significatif (pour debug)
-    const eliminatedMovers: Array<{ symbol: string; ch1h: number; longScore: number; shortScore: number; longReasons: string[]; shortReasons: string[] }> = [];
+    const eliminatedMovers: Array<{ symbol: string; ch1h: number; ch24h: number; longScore: number; shortScore: number; longReasons: string[]; shortReasons: string[] }> = [];
 
     const DEBUG_TOKENS = ["bitcoin", "ethereum"];
 
@@ -489,18 +489,18 @@ export async function runCron() {
           console.log(`[PRE-SCORE] ${coin.symbol.toUpperCase()} 1h=+${ch1h.toFixed(1)}% → candidat LONG potentiel (40pts)`);
         }
 
-        // Gros mover SHORT potentiel : 1h entre -3% et -8% ET 24h négatif
-        if (ch1h <= -3 && ch1h >= -8 && ch24h < 0) {
+        // Gros mover SHORT potentiel : 1h entre -3% et -8% (24h non requis — baisse 1h suffit)
+        if (ch1h <= -3 && ch1h >= -8) {
           boostedShort = Math.max(ss.score, 40);
           boostedEntry = true;
-          console.log(`[PRE-SCORE] ${coin.symbol.toUpperCase()} 1h=${ch1h.toFixed(1)}% → candidat SHORT potentiel (40pts)`);
+          console.log(`[PRE-SCORE] ${coin.symbol.toUpperCase()} 1h=${ch1h.toFixed(1)}% 24h=${ch24h >= 0 ? '+' : ''}${ch24h.toFixed(1)}% → candidat SHORT potentiel (40pts)`);
         }
 
         if (boostedEntry) {
           candidates.push({ coin, longScore: boostedLong, shortScore: boostedShort, longReasons: ls.reasons, shortReasons: ss.reasons });
         } else if (Math.abs(ch1h) >= 3) {
           // Tracker les gros movers encore éliminés (|ch1h| >= 3%)
-          eliminatedMovers.push({ symbol: coin.symbol.toUpperCase(), ch1h, longScore: ls.score, shortScore: ss.score, longReasons: ls.reasons, shortReasons: ss.reasons });
+          eliminatedMovers.push({ symbol: coin.symbol.toUpperCase(), ch1h, ch24h, longScore: ls.score, shortScore: ss.score, longReasons: ls.reasons, shortReasons: ss.reasons });
         }
       }
     }
@@ -523,7 +523,8 @@ export async function runCron() {
         const sign = m.ch1h >= 0 ? "+" : "";
         const whyLong = m.longReasons.slice(0, 2).join(" | ") || "—";
         const whyShort = m.shortReasons.slice(0, 2).join(" | ") || "—";
-        console.log(`  ${m.symbol} 1h=${sign}${m.ch1h.toFixed(2)}% → LONG=${m.longScore} SHORT=${m.shortScore} | ${whyLong}`);
+        const sign24 = m.ch24h >= 0 ? "+" : "";
+        console.log(`  ${m.symbol} 1h=${sign}${m.ch1h.toFixed(2)}% 24h=${sign24}${m.ch24h.toFixed(2)}% → LONG=${m.longScore} SHORT=${m.shortScore} | ${whyLong}`);
       }
     }
 
