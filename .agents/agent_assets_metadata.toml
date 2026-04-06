@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "n9-Udu_wl7b5zC8xmD_ri"
+uri = "file://TRADEYE_BACKUP_V5.txt"
+type = "text"
+title = "TRADEYE_BACKUP_V5 — Code source complet"
