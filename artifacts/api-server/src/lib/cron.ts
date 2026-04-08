@@ -86,7 +86,7 @@ export const COINGECKO_MAPPING: Record<string, string> = {
   ankr: "ANKRUSDT",
 };
 
-const MIN_SCORE = 75;          // Score minimum FINAL pour émettre un signal
+const MIN_SCORE = 70;          // Score minimum FINAL pour émettre un signal
 // PRE_SCORE_THRESHOLD est calculé dynamiquement chaque cycle selon la dispersion marché
 const MIN_VOLUME = 3_000_000;
 const BLACKLISTED_TOKENS = ["BAN", "AKT", "M", "TRIA", "ANKR", "PIPPIN"];
@@ -482,15 +482,15 @@ export async function runCron() {
         let boostedShort = ss.score;
         let boostedEntry = false;
 
-        // Gros mover LONG potentiel : 1h entre +3% et +8% ET 24h positif
-        if (ch1h >= 3 && ch1h <= 8 && ch24h > 0) {
+        // Gros mover LONG potentiel : 1h entre +3% et +10% ET 24h positif
+        if (ch1h >= 3 && ch1h <= 10 && ch24h > 0) {
           boostedLong = Math.max(ls.score, 40);
           boostedEntry = true;
           console.log(`[PRE-SCORE] ${coin.symbol.toUpperCase()} 1h=+${ch1h.toFixed(1)}% → candidat LONG potentiel (40pts)`);
         }
 
-        // Gros mover SHORT potentiel : 1h entre -3% et -8% (24h non requis — baisse 1h suffit)
-        if (ch1h <= -3 && ch1h >= -8) {
+        // Gros mover SHORT potentiel : 1h entre -3% et -10% (24h non requis — baisse 1h suffit)
+        if (ch1h <= -3 && ch1h >= -10) {
           boostedShort = Math.max(ss.score, 40);
           boostedEntry = true;
           console.log(`[PRE-SCORE] ${coin.symbol.toUpperCase()} 1h=${ch1h.toFixed(1)}% 24h=${ch24h >= 0 ? '+' : ''}${ch24h.toFixed(1)}% → candidat SHORT potentiel (40pts)`);
