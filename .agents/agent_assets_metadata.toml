@@ -6,3 +6,9 @@ id = "n9-Udu_wl7b5zC8xmD_ri"
 uri = "file://TRADEYE_BACKUP_V5.txt"
 type = "text"
 title = "TRADEYE_BACKUP_V5 — Code source complet"
+
+[[outputs]]
+id = "k3CN6l41BznBrPSvoZZvL"
+uri = "file://TRADEYE_BACKUP_V5_16042026.txt"
+type = "text"
+title = "TRADEYE_BACKUP_V5_16042026 — Code source complet"
