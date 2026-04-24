@@ -1,0 +1,9 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pnpm install --no-frozen-lockfile && pnpm run build"
+  },
+  "deploy": {
+    "startCommand": "node dist/index.js"
+  }
+}
