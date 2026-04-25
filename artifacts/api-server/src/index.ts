@@ -6,19 +6,7 @@ import { db } from "@workspace/db";
 import { signalsTable } from "@workspace/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
+const port = parseInt(process.env.PORT || "3000", 10);
 
 async function main() {
   try {
